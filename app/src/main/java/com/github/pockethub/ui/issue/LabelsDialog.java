@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,14 +15,13 @@
  */
 package com.github.pockethub.ui.issue;
 
-import static java.lang.String.CASE_INSENSITIVE_ORDER;
-
 import android.util.Log;
 
-import com.alorma.github.basesdk.client.BaseClient;
 import com.alorma.github.sdk.bean.dto.response.Label;
+import com.alorma.github.sdk.bean.dto.response.Repo;
 import com.alorma.github.sdk.services.issues.GithubIssueLabelsClient;
 import com.github.pockethub.R;
+import com.github.pockethub.rx.ObserverAdapter;
 import com.github.pockethub.ui.BaseProgressDialog;
 import com.github.pockethub.ui.DialogFragmentActivity;
 import com.github.pockethub.util.InfoUtils;
@@ -36,10 +35,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.alorma.github.sdk.bean.dto.response.Repo;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
-import retrofit.RetrofitError;
-import retrofit.client.Response;
+import static java.lang.String.CASE_INSENSITIVE_ORDER;
 
 /**
  * Dialog helper to display a list of possibly selected issue labels
@@ -73,28 +72,31 @@ public class LabelsDialog extends BaseProgressDialog {
 
     private void load(final Collection<Label> selectedLabels) {
         showIndeterminate(R.string.loading_labels);
-        GithubIssueLabelsClient getLabelsClient = new GithubIssueLabelsClient(activity, InfoUtils.createRepoInfo(repository));
-        getLabelsClient.setOnResultCallback(new BaseClient.OnResultCallback<List<Label>>() {
-            @Override
-            public void onResponseOk(List<Label> repositoryLabels, Response r) {
-                Map<String, Label> loadedLabels = new TreeMap<>(
-                        CASE_INSENSITIVE_ORDER);
-                for (Label label : repositoryLabels)
-                    loadedLabels.put(label.name, label);
-                labels = loadedLabels;
+        new GithubIssueLabelsClient(InfoUtils.createRepoInfo(repository))
+                .observable()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .compose(activity.<List<Label>>bindToLifecycle())
+                .subscribe(new ObserverAdapter<List<Label>>() {
+                    @Override
+                    public void onNext(List<Label> repositoryLabels) {
+                        Map<String, Label> loadedLabels = new TreeMap<>(
+                                CASE_INSENSITIVE_ORDER);
+                        for (Label label : repositoryLabels)
+                            loadedLabels.put(label.name, label);
+                        labels = loadedLabels;
 
-                dismissProgress();
-                show(selectedLabels);
-            }
+                        dismissProgress();
+                        show(selectedLabels);
+                    }
 
-            @Override
-            public void onFail(RetrofitError error) {
-                dismissProgress();
-                Log.d(TAG, "Exception loading labels", error);
-                ToastUtils.show(activity, error, R.string.error_labels_load);
-            }
-        });
-        getLabelsClient.execute();
+                    @Override
+                    public void onError(Throwable error) {
+                        dismissProgress();
+                        Log.e(TAG, "Exception loading labels", error);
+                        ToastUtils.show(activity, error, R.string.error_labels_load);
+                    }
+                });
     }
 
     /**

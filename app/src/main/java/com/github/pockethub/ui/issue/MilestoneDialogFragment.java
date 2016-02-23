@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,14 +15,11 @@
  */
 package com.github.pockethub.ui.issue;
 
-import static android.app.Activity.RESULT_OK;
-import static android.content.DialogInterface.BUTTON_NEGATIVE;
-import static android.content.DialogInterface.BUTTON_NEUTRAL;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -30,6 +27,8 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ListView;
 
+import com.afollestad.materialdialogs.DialogAction;
+import com.afollestad.materialdialogs.MaterialDialog;
 import com.alorma.github.sdk.bean.dto.response.Milestone;
 import com.github.kevinsawicki.wishlist.SingleTypeAdapter;
 import com.github.kevinsawicki.wishlist.ViewUtils;
@@ -38,6 +37,10 @@ import com.github.pockethub.ui.DialogFragmentActivity;
 import com.github.pockethub.ui.SingleChoiceDialogFragment;
 
 import java.util.ArrayList;
+
+import static android.app.Activity.RESULT_OK;
+import static android.content.DialogInterface.BUTTON_NEGATIVE;
+import static android.content.DialogInterface.BUTTON_NEUTRAL;
 
 
 /**
@@ -115,10 +118,21 @@ public class MilestoneDialogFragment extends SingleChoiceDialogFragment {
         Activity activity = getActivity();
         Bundle arguments = getArguments();
 
-        final AlertDialog dialog = createDialog();
-        dialog.setButton(BUTTON_NEGATIVE, activity.getString(R.string.cancel),
-                this);
-        dialog.setButton(BUTTON_NEUTRAL, activity.getString(R.string.clear), this);
+        final MaterialDialog.Builder dialogBuilder = createDialogBuilder()
+                .negativeText(R.string.cancel)
+                .onNegative(new MaterialDialog.SingleButtonCallback() {
+                    @Override
+                    public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                        MilestoneDialogFragment.this.onClick(dialog, BUTTON_NEGATIVE);
+                    }
+                })
+                .neutralText(R.string.clear)
+                .onNeutral(new MaterialDialog.SingleButtonCallback() {
+                    @Override
+                    public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
+                        MilestoneDialogFragment.this.onClick(dialog, BUTTON_NEUTRAL);
+                    }
+                });
 
         LayoutInflater inflater = activity.getLayoutInflater();
 
@@ -129,7 +143,7 @@ public class MilestoneDialogFragment extends SingleChoiceDialogFragment {
             @Override
             public void onItemClick(AdapterView<?> parent, View view,
                     int position, long id) {
-                onClick(dialog, position);
+                onClick(getDialog(), position);
             }
         });
 
@@ -140,9 +154,9 @@ public class MilestoneDialogFragment extends SingleChoiceDialogFragment {
         view.setAdapter(adapter);
         if (selected >= 0)
             view.setSelection(selected);
-        dialog.setView(view);
+        dialogBuilder.customView(view, false);
 
-        return dialog;
+        return dialogBuilder.build();
     }
 
     @SuppressWarnings("unchecked")

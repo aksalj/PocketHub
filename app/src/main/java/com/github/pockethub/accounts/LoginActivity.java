@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,7 +17,6 @@ package com.github.pockethub.accounts;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
-import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
@@ -29,17 +28,15 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
-import com.alorma.github.basesdk.client.BaseClient;
-import com.alorma.github.basesdk.client.GithubDeveloperCredentialsProvider;
-import com.alorma.github.basesdk.client.credentials.GithubDeveloperCredentials;
+import com.afollestad.materialdialogs.MaterialDialog;
 import com.alorma.github.sdk.bean.dto.response.Organization;
 import com.alorma.github.sdk.bean.dto.response.Token;
-import com.alorma.github.sdk.login.AccountsHelper;
+import com.alorma.github.sdk.bean.dto.response.User;
 import com.alorma.github.sdk.services.login.RequestTokenClient;
 import com.alorma.github.sdk.services.user.GetAuthUserClient;
 import com.github.pockethub.R;
 import com.github.pockethub.persistence.AccountDataManager;
-import com.github.pockethub.ui.LightProgressDialog;
+import com.github.pockethub.rx.ObserverAdapter;
 import com.github.pockethub.ui.MainActivity;
 import com.github.pockethub.ui.roboactivities.RoboAccountAuthenticatorAppCompatActivity;
 import com.google.inject.Inject;
@@ -47,15 +44,15 @@ import com.squareup.okhttp.HttpUrl;
 
 import java.util.List;
 
-import retrofit.RetrofitError;
-import retrofit.client.Response;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 import static com.github.pockethub.accounts.AccountConstants.PROVIDER_AUTHORITY;
 
 /**
  * Activity to login
  */
-public class LoginActivity extends RoboAccountAuthenticatorAppCompatActivity implements BaseClient.OnResultCallback<com.alorma.github.sdk.bean.dto.response.User> {
+public class LoginActivity extends RoboAccountAuthenticatorAppCompatActivity {
 
     /**
      * Auth token type parameter
@@ -79,6 +76,9 @@ public class LoginActivity extends RoboAccountAuthenticatorAppCompatActivity imp
      * Sync period in seconds, currently every 8 hours
      */
     private static final long SYNC_PERIOD = 8L * 60L * 60L;
+    private String clientId;
+    private String secret;
+    private String redirectUri;
 
     public static void configureSyncFor(Account account) {
         Log.d(TAG, "Configuring account sync");
@@ -113,15 +113,17 @@ public class LoginActivity extends RoboAccountAuthenticatorAppCompatActivity imp
 
     private String scope;
 
-    private RequestTokenClient requestTokenClient;
-
-    private AlertDialog progressDialog;
+    private MaterialDialog progressDialog;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.login);
+
+        clientId = getString(R.string.github_client);
+        secret = getString(R.string.github_secret);
+        redirectUri = getString(R.string.github_oauth);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -137,7 +139,7 @@ public class LoginActivity extends RoboAccountAuthenticatorAppCompatActivity imp
     }
 
     private void checkOauthConfig() {
-        if (getString(R.string.github_client).equals("dummy_client") || getString(R.string.github_secret).equals("dummy_secret"))
+        if (clientId.equals("dummy_client") || secret.equals("dummy_secret"))
             Toast.makeText(this, R.string.error_oauth_not_configured, Toast.LENGTH_LONG).show();
     }
 
@@ -152,26 +154,27 @@ public class LoginActivity extends RoboAccountAuthenticatorAppCompatActivity imp
         if (uri != null && uri.getScheme().equals(getString(R.string.github_oauth_scheme))) {
             openLoadingDialog();
             String code = uri.getQueryParameter("code");
-            if (requestTokenClient == null) {
-                requestTokenClient = new RequestTokenClient(LoginActivity.this, code);
-                requestTokenClient.setOnResultCallback(new BaseClient.OnResultCallback<Token>() {
-                    @Override
-                    public void onResponseOk(Token token, Response r) {
-                        if (token.access_token != null) {
-                            endAuth(token.access_token, token.scope);
-                        } else if (token.error != null) {
-                            Toast.makeText(LoginActivity.this, token.error, Toast.LENGTH_LONG).show();
-                            progressDialog.dismiss();
+            new RequestTokenClient(code, clientId, secret, redirectUri)
+                    .observable()
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .compose(this.<Token>bindToLifecycle())
+                    .subscribe(new ObserverAdapter<Token>() {
+                        @Override
+                        public void onError(Throwable e) {
+                            e.printStackTrace();
                         }
-                    }
 
-                    @Override
-                    public void onFail(RetrofitError error) {
-                        error.printStackTrace();
-                    }
-                });
-                requestTokenClient.execute();
-            }
+                        @Override
+                        public void onNext(Token token) {
+                            if (token.access_token != null) {
+                                endAuth(token.access_token, token.scope);
+                            } else if (token.error != null) {
+                                Toast.makeText(LoginActivity.this, token.error, Toast.LENGTH_LONG).show();
+                                progressDialog.dismiss();
+                            }
+                        }
+                    });
         }
     }
 
@@ -186,16 +189,17 @@ public class LoginActivity extends RoboAccountAuthenticatorAppCompatActivity imp
     }
 
     private void openLoadingDialog() {
-        progressDialog = LightProgressDialog.create(this,
-                R.string.login_activity_authenticating);
-        progressDialog.show();
+        progressDialog = new MaterialDialog.Builder(this)
+                .progress(true, 0)
+                .content(R.string.login_activity_authenticating)
+                .show();
     }
 
     public void handleLogin() {
-        openLoginInBrowser(GithubDeveloperCredentials.getInstance().getProvider());
+        openLoginInBrowser();
     }
 
-    private void openLoginInBrowser(GithubDeveloperCredentialsProvider client) {
+    private void openLoginInBrowser() {
         String initialScope = "user,public_repo,repo,delete_repo,notifications,gist";
         HttpUrl.Builder url = new HttpUrl.Builder()
                 .scheme("https")
@@ -203,7 +207,7 @@ public class LoginActivity extends RoboAccountAuthenticatorAppCompatActivity imp
                 .addPathSegment("login")
                 .addPathSegment("oauth")
                 .addPathSegment("authorize")
-                .addQueryParameter("client_id", client.getApiClient())
+                .addQueryParameter("client_id", getString(R.string.github_client))
                 .addQueryParameter("scope", initialScope);
 
         Intent intent = new Intent(this, LoginWebViewActivity.class);
@@ -229,44 +233,47 @@ public class LoginActivity extends RoboAccountAuthenticatorAppCompatActivity imp
         }
     }
 
-    @Override
-    public void onResponseOk(com.alorma.github.sdk.bean.dto.response.User user, Response r) {
-        Account account = new Account(user.login, getString(R.string.account_type));
-        Bundle userData = AccountsHelper.buildBundle(user.name, user.email, user.avatar_url, scope);
-        userData.putString(AccountManager.KEY_AUTHTOKEN, accessToken);
-
-        accountManager.addAccountExplicitly(account, null, userData);
-        accountManager.setAuthToken(account, getString(R.string.account_type), accessToken);
-
-        Bundle result = new Bundle();
-        result.putString(AccountManager.KEY_ACCOUNT_NAME, account.name);
-        result.putString(AccountManager.KEY_ACCOUNT_TYPE, account.type);
-        result.putString(AccountManager.KEY_AUTHTOKEN, accessToken);
-
-        setAccountAuthenticatorResult(result);
-
-        openMain();
-    }
-
-    @Override
-    public void onFail(RetrofitError error) {
-        error.printStackTrace();
-    }
-
-    private void endAuth(String accessToken, String scope) {
+    private void endAuth(final String accessToken, final String scope) {
         this.accessToken = accessToken;
         this.scope = scope;
 
         progressDialog.setMessage(getString(R.string.loading_user));
 
-        GetAuthUserClient userClient = new GetAuthUserClient(this, accessToken);
-        userClient.setOnResultCallback(this);
-        userClient.execute();
+        new GetAuthUserClient(accessToken)
+                .observable()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .compose(this.<User>bindToLifecycle())
+                .subscribe(new ObserverAdapter<User>() {
+                    @Override
+                    public void onError(Throwable e) {
+                        e.printStackTrace();
+                    }
+
+                    @Override
+                    public void onNext(User user) {
+                        Account account = new Account(user.login, getString(R.string.account_type));
+                        Bundle userData = AccountsHelper.buildBundle(user.name, user.email, user.avatar_url, scope);
+                        userData.putString(AccountManager.KEY_AUTHTOKEN, accessToken);
+
+                        accountManager.addAccountExplicitly(account, null, userData);
+                        accountManager.setAuthToken(account, getString(R.string.account_type), accessToken);
+
+                        Bundle result = new Bundle();
+                        result.putString(AccountManager.KEY_ACCOUNT_NAME, account.name);
+                        result.putString(AccountManager.KEY_ACCOUNT_TYPE, account.type);
+                        result.putString(AccountManager.KEY_AUTHTOKEN, accessToken);
+
+                        setAccountAuthenticatorResult(result);
+
+                        openMain();
+                    }
+                });
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu optionMenu) {
-        getMenuInflater().inflate(R.menu.login, optionMenu);
+        getMenuInflater().inflate(R.menu.activity_login, optionMenu);
         return true;
     }
 }

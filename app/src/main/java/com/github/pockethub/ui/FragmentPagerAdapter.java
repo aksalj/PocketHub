@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,6 +37,8 @@ public abstract class FragmentPagerAdapter extends
     private Fragment selected;
 
     private final Set<String> tags = new HashSet<>();
+
+    private int containerId;
 
     /**
      * @param activity
@@ -88,9 +90,27 @@ public abstract class FragmentPagerAdapter extends
 
     public Object instantiateItem(ViewGroup container, int position) {
         Object fragment = super.instantiateItem(container, position);
-        if (fragment instanceof Fragment)
+        containerId = container.getId();
+        if (fragment instanceof Fragment) {
             tags.add(((Fragment) fragment).getTag());
+        }
+
         return fragment;
+    }
+
+    /**
+     * This method is used to get a reference to created fragments in the adapter.
+     *
+     * @param fragmentPosition
+     * position of the fragment in the pager.
+     *
+     * @return corresponding fragment that is created
+     * during {@link #instantiateItem(ViewGroup, int)}
+     *
+     */
+    public Fragment getFragmentByPosition(int fragmentPosition) {
+        String fragmentTag = getFragmentTag(containerId, fragmentPosition);
+        return fragmentManager.findFragmentByTag(fragmentTag);
     }
 
     @Override
@@ -109,5 +129,9 @@ public abstract class FragmentPagerAdapter extends
 
         if (changed)
             activity.invalidateOptionsMenu();
+    }
+
+    private String getFragmentTag(int viewPagerId, int fragmentPosition) {
+        return "android:switcher:" + viewPagerId + ":" + fragmentPosition;
     }
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,26 +15,26 @@
  */
 package com.github.pockethub.ui.gist;
 
-import static com.github.pockethub.RequestCodes.GIST_VIEW;
 import android.accounts.Account;
 import android.app.Activity;
 import android.util.Log;
 
-import com.alorma.github.sdk.services.client.GithubClient;
+import com.alorma.github.sdk.bean.dto.response.Gist;
+import com.alorma.github.sdk.services.client.GithubListClient;
 import com.alorma.github.sdk.services.gists.PublicGistsClient;
-import com.alorma.github.sdk.services.gists.UserGistsClient;
 import com.github.pockethub.R;
+import com.github.pockethub.core.PageIterator;
 import com.github.pockethub.core.gist.GistStore;
 import com.github.pockethub.ui.ProgressDialogTask;
 import com.github.pockethub.util.ToastUtils;
 import com.google.inject.Inject;
 
+import org.eclipse.egit.github.core.service.GistService;
+
 import java.util.Collection;
 import java.util.List;
 
-import com.alorma.github.sdk.bean.dto.response.Gist;
-import com.github.pockethub.core.PageIterator;
-import org.eclipse.egit.github.core.service.GistService;
+import static com.github.pockethub.RequestCodes.GIST_VIEW;
 
 /**
  * Task to open a random Gist
@@ -73,19 +73,19 @@ public class RandomGistTask extends ProgressDialogTask<Gist> {
     protected Gist run(Account account) throws Exception {
         PageIterator<Gist> pages = new PageIterator<>(new PageIterator.GitHubRequest<List<Gist>>() {
             @Override
-            public GithubClient<List<Gist>> execute(int page) {
-                return new PublicGistsClient(context, 1);
+            public GithubListClient<List<Gist>> execute(int page) {
+                return new PublicGistsClient(1);
             }
         }, 1);
         pages.next();
         int randomPage = 1 + (int) (Math.random() * ((pages.getLastPage() - 1) + 1));
 
-        Collection<Gist> gists = pages.getRequest().execute(randomPage).executeSync();
+        Collection<Gist> gists = pages.getRequest().execute(randomPage).observable().toBlocking().first().first;
 
         // Make at least two tries since page numbers are volatile
         if (gists.isEmpty()) {
             randomPage = 1 + (int) (Math.random() * ((pages.getLastPage() - 1) + 1));
-            gists = pages.getRequest().execute(randomPage).executeSync();
+            gists = pages.getRequest().execute(randomPage).observable().toBlocking().first().first;
         }
 
         if (gists.isEmpty())

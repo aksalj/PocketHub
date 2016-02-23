@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,17 +15,15 @@
  */
 package com.github.pockethub.ui.issue;
 
-import static java.lang.String.CASE_INSENSITIVE_ORDER;
-import android.accounts.Account;
 import android.util.Log;
 
-import com.alorma.github.basesdk.client.BaseClient;
+import com.alorma.github.sdk.bean.dto.response.Repo;
+import com.alorma.github.sdk.bean.dto.response.User;
 import com.alorma.github.sdk.services.issues.GetAssigneesClient;
-import com.alorma.github.sdk.services.repo.GetRepoCollaboratorsClient;
 import com.github.pockethub.R;
+import com.github.pockethub.rx.ObserverAdapter;
 import com.github.pockethub.ui.BaseProgressDialog;
 import com.github.pockethub.ui.DialogFragmentActivity;
-import com.github.pockethub.ui.ProgressDialogTask;
 import com.github.pockethub.util.InfoUtils;
 import com.github.pockethub.util.ToastUtils;
 
@@ -34,12 +32,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.alorma.github.sdk.bean.dto.response.Repo;
-import com.alorma.github.sdk.bean.dto.response.User;
-import org.eclipse.egit.github.core.service.CollaboratorService;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
-import retrofit.RetrofitError;
-import retrofit.client.Response;
+import static java.lang.String.CASE_INSENSITIVE_ORDER;
 
 /**
  * Dialog helper to display a list of assignees to select one from
@@ -73,28 +69,30 @@ public class AssigneeDialog extends BaseProgressDialog {
 
     private void load(final User selectedAssignee) {
         showIndeterminate(R.string.loading_collaborators);
-        GetAssigneesClient getAssigneesClient = new GetAssigneesClient(activity, InfoUtils.createRepoInfo(repository));
-        getAssigneesClient.setOnResultCallback(new BaseClient.OnResultCallback<List<User>>() {
-            @Override
-            public void onResponseOk(List<User> users, Response r) {
-                Map<String, User> loadedCollaborators = new TreeMap<>(
-                        CASE_INSENSITIVE_ORDER);
-                for (User user : users)
-                    loadedCollaborators.put(user.login, user);
-                collaborators = loadedCollaborators;
+        new GetAssigneesClient(InfoUtils.createRepoInfo(repository)).observable()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .compose(activity.<List<User>>bindToLifecycle())
+                .subscribe(new ObserverAdapter<List<User>>() {
+                    @Override
+                    public void onError(Throwable error) {
+                        dismissProgress();
+                        Log.d(TAG, "Exception loading collaborators", error);
+                        ToastUtils.show(activity, error, R.string.error_collaborators_load);
+                    }
 
-                dismissProgress();
-                show(selectedAssignee);
-            }
+                    @Override
+                    public void onNext(List<User> users) {
+                        Map<String, User> loadedCollaborators = new TreeMap<>(
+                                CASE_INSENSITIVE_ORDER);
+                        for (User user : users)
+                            loadedCollaborators.put(user.login, user);
+                        collaborators = loadedCollaborators;
 
-            @Override
-            public void onFail(RetrofitError error) {
-                dismissProgress();
-                Log.d(TAG, "Exception loading collaborators", error);
-                ToastUtils.show(activity, error, R.string.error_collaborators_load);
-            }
-        });
-        getAssigneesClient.execute();
+                        dismissProgress();
+                        show(selectedAssignee);
+                    }
+                });
     }
 
     /**

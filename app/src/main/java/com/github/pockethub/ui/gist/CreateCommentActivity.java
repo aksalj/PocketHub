@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,26 +15,25 @@
  */
 package com.github.pockethub.ui.gist;
 
-import static com.github.pockethub.Intents.EXTRA_GIST;
-
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.ActionBar;
 import android.util.Log;
 
-import com.alorma.github.basesdk.client.BaseClient;
 import com.alorma.github.sdk.bean.dto.request.CommentRequest;
+import com.alorma.github.sdk.bean.dto.response.Gist;
 import com.alorma.github.sdk.bean.dto.response.GithubComment;
+import com.alorma.github.sdk.bean.dto.response.User;
 import com.alorma.github.sdk.services.gists.PublishGistCommentClient;
 import com.github.pockethub.Intents.Builder;
 import com.github.pockethub.R;
-
-import com.alorma.github.sdk.bean.dto.response.Gist;
-import com.alorma.github.sdk.bean.dto.response.User;
+import com.github.pockethub.rx.ObserverAdapter;
 import com.github.pockethub.util.ToastUtils;
 
-import retrofit.RetrofitError;
-import retrofit.client.Response;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
+
+import static com.github.pockethub.Intents.EXTRA_GIST;
 
 /**
  * Activity to create a comment on a {@link Gist}
@@ -74,21 +73,23 @@ public class CreateCommentActivity extends
 
     @Override
     protected void createComment(final String comment) {
-        PublishGistCommentClient commentClient = new PublishGistCommentClient(this,
-                gist.id, new CommentRequest(comment));
-        commentClient.setOnResultCallback(new BaseClient.OnResultCallback<GithubComment>() {
-            @Override
-            public void onResponseOk(GithubComment githubComment, Response r) {
-                finish(githubComment);
-            }
+        new PublishGistCommentClient(gist.id, new CommentRequest(comment))
+                .observable()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .compose(this.<GithubComment>bindToLifecycle())
+                .subscribe(new ObserverAdapter<GithubComment>() {
+                    @Override
+                    public void onNext(GithubComment githubComment) {
+                        finish(githubComment);
+                    }
 
-            @Override
-            public void onFail(RetrofitError error) {
-                Log.d(TAG, "Exception creating comment on gist", error);
+                    @Override
+                    public void onError(Throwable error) {
+                        Log.e(TAG, "Exception creating comment on gist", error);
 
-                ToastUtils.show(CreateCommentActivity.this, error.getMessage());
-            }
-        });
-        commentClient.execute();
+                        ToastUtils.show(CreateCommentActivity.this, error.getMessage());
+                    }
+                });
     }
 }

@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,12 +15,6 @@
  */
 package com.github.pockethub.ui.commit;
 
-import static com.github.pockethub.Intents.EXTRA_BASE;
-import static com.github.pockethub.Intents.EXTRA_HEAD;
-import static com.github.pockethub.Intents.EXTRA_PATH;
-import static com.github.pockethub.Intents.EXTRA_REPOSITORY;
-import static com.github.pockethub.util.PreferenceUtils.RENDER_MARKDOWN;
-import static com.github.pockethub.util.PreferenceUtils.WRAP;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager.LoaderCallbacks;
@@ -34,7 +28,6 @@ import android.view.MenuItem;
 import android.webkit.WebView;
 import android.widget.ProgressBar;
 
-import com.alorma.github.basesdk.client.BaseClient;
 import com.alorma.github.sdk.bean.dto.response.CommitFile;
 import com.alorma.github.sdk.bean.dto.response.GitBlob;
 import com.alorma.github.sdk.bean.dto.response.Repo;
@@ -42,8 +35,8 @@ import com.alorma.github.sdk.services.git.GetGitBlobClient;
 import com.github.kevinsawicki.wishlist.ViewUtils;
 import com.github.pockethub.Intents.Builder;
 import com.github.pockethub.R;
-import com.github.pockethub.core.code.RefreshBlobTask;
 import com.github.pockethub.core.commit.CommitUtils;
+import com.github.pockethub.rx.ObserverAdapter;
 import com.github.pockethub.ui.BaseActivity;
 import com.github.pockethub.ui.MarkdownLoader;
 import com.github.pockethub.util.AvatarLoader;
@@ -56,10 +49,15 @@ import com.github.pockethub.util.SourceEditor;
 import com.github.pockethub.util.ToastUtils;
 import com.google.inject.Inject;
 
-import org.eclipse.egit.github.core.util.EncodingUtils;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
-import retrofit.RetrofitError;
-import retrofit.client.Response;
+import static com.github.pockethub.Intents.EXTRA_BASE;
+import static com.github.pockethub.Intents.EXTRA_HEAD;
+import static com.github.pockethub.Intents.EXTRA_PATH;
+import static com.github.pockethub.Intents.EXTRA_REPOSITORY;
+import static com.github.pockethub.util.PreferenceUtils.RENDER_MARKDOWN;
+import static com.github.pockethub.util.PreferenceUtils.WRAP;
 
 /**
  * Activity to display the contents of a file in a commit
@@ -125,7 +123,7 @@ public class CommitFileViewActivity extends BaseActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.commit_file_view);
+        setContentView(R.layout.activity_commit_file_view);
 
         setSupportActionBar((android.support.v7.widget.Toolbar) findViewById(R.id.toolbar));
 
@@ -159,7 +157,7 @@ public class CommitFileViewActivity extends BaseActivity implements
 
     @Override
     public boolean onCreateOptionsMenu(final Menu optionsMenu) {
-        getMenuInflater().inflate(R.menu.file_view, optionsMenu);
+        getMenuInflater().inflate(R.menu.activity_file_view, optionsMenu);
 
         MenuItem wrapItem = optionsMenu.findItem(R.id.m_wrap);
         if (PreferenceUtils.getCodePreferences(this).getBoolean(WRAP, false))
@@ -267,43 +265,45 @@ public class CommitFileViewActivity extends BaseActivity implements
     }
 
     private void loadContent() {
-        GetGitBlobClient gitBlobClient = new GetGitBlobClient(this,
-                InfoUtils.createCommitInfo(repo, sha));
-        gitBlobClient.setOnResultCallback(new BaseClient.OnResultCallback<GitBlob>() {
-            @Override
-            public void onResponseOk(GitBlob gitBlob, Response r) {
-                ViewUtils.setGone(loadingBar, true);
-                ViewUtils.setGone(codeView, false);
+        new GetGitBlobClient(InfoUtils.createCommitInfo(repo, sha))
+                .observable()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .compose(this.<GitBlob>bindToLifecycle())
+                .subscribe(new ObserverAdapter<GitBlob>() {
+                    @Override
+                    public void onNext(GitBlob gitBlob) {
+                        ViewUtils.setGone(loadingBar, true);
+                        ViewUtils.setGone(codeView, false);
 
-                editor.setSource(path, gitBlob);
-                CommitFileViewActivity.this.blob = gitBlob;
+                        editor.setSource(path, gitBlob);
+                        CommitFileViewActivity.this.blob = gitBlob;
 
-                if (markdownItem != null)
-                    markdownItem.setEnabled(true);
+                        if (markdownItem != null)
+                            markdownItem.setEnabled(true);
 
-                if (isMarkdownFile
-                        && PreferenceUtils.getCodePreferences(
-                        CommitFileViewActivity.this).getBoolean(
-                        RENDER_MARKDOWN, true))
-                    loadMarkdown();
-                else {
-                    ViewUtils.setGone(loadingBar, true);
-                    ViewUtils.setGone(codeView, false);
-                    editor.setSource(path, gitBlob);
-                }
-            }
+                        if (isMarkdownFile
+                                && PreferenceUtils.getCodePreferences(
+                                CommitFileViewActivity.this).getBoolean(
+                                RENDER_MARKDOWN, true))
+                            loadMarkdown();
+                        else {
+                            ViewUtils.setGone(loadingBar, true);
+                            ViewUtils.setGone(codeView, false);
+                            editor.setSource(path, gitBlob);
+                        }
+                    }
 
-            @Override
-            public void onFail(RetrofitError error) {
-                Log.d(TAG, "Loading commit file contents failed", error);
+                    @Override
+                    public void onError(Throwable error) {
+                        Log.e(TAG, "Loading commit file contents failed", error);
 
-                ViewUtils.setGone(loadingBar, true);
-                ViewUtils.setGone(codeView, false);
-                ToastUtils.show(CommitFileViewActivity.this, error,
-                        R.string.error_file_load);
-            }
-        });
-        gitBlobClient.execute();
+                        ViewUtils.setGone(loadingBar, true);
+                        ViewUtils.setGone(codeView, false);
+                        ToastUtils.show(CommitFileViewActivity.this, error,
+                                R.string.error_file_load);
+                    }
+                });
     }
 
 }

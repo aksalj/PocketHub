@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,16 +23,12 @@ import com.alorma.github.sdk.bean.dto.response.IssueState;
 import com.alorma.github.sdk.bean.dto.response.Repo;
 import com.alorma.github.sdk.bean.dto.response.User;
 import com.alorma.github.sdk.bean.info.IssueInfo;
-import com.alorma.github.sdk.bean.info.RepoInfo;
 import com.alorma.github.sdk.services.issues.ChangeIssueStateClient;
 import com.alorma.github.sdk.services.issues.EditIssueClient;
 import com.alorma.github.sdk.services.issues.GetIssueClient;
-import com.alorma.github.sdk.services.pullrequest.GetPullsClient;
-import com.alorma.github.sdk.services.pullrequest.GetSinglePullRequestClient;
 import com.github.pockethub.core.ItemStore;
 import com.github.pockethub.util.HtmlUtils;
 import com.github.pockethub.util.InfoUtils;
-import com.squareup.okhttp.internal.http.RequestException;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -157,7 +153,7 @@ public class IssueStore extends ItemStore {
      */
     public Issue refreshIssue(Repo repository, int number) throws IOException {
         IssueInfo issueInfo = InfoUtils.createIssueInfo(repository, number);
-        Issue issue = new GetIssueClient(context, issueInfo).executeSync();
+        Issue issue = new GetIssueClient(issueInfo).observable().toBlocking().first();
         return addIssue(repository, issue);
     }
 
@@ -172,12 +168,12 @@ public class IssueStore extends ItemStore {
     public Issue editIssue(Repo repository, int issueNumber, EditIssueRequestDTO editIssueRequestDTO) throws IOException {
         IssueInfo issueInfo = new IssueInfo(InfoUtils.createRepoInfo(repository));
         issueInfo.num = issueNumber;
-        return addIssue(repository, new EditIssueClient(context, issueInfo, editIssueRequestDTO).executeSync());
+        return addIssue(repository, new EditIssueClient(issueInfo, editIssueRequestDTO).observable().toBlocking().first());
     }
 
     public Issue changeState(Repo repository, int issueNumber, IssueState state) throws IOException {
         IssueInfo issueInfo = new IssueInfo(InfoUtils.createRepoInfo(repository));
         issueInfo.num = issueNumber;
-        return addIssue(repository, new ChangeIssueStateClient(context, issueInfo, state).executeSync());
+        return addIssue(repository, new ChangeIssueStateClient(issueInfo, state).observable().toBlocking().first());
     }
 }

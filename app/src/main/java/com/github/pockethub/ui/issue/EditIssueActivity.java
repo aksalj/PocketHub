@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,20 +15,9 @@
  */
 package com.github.pockethub.ui.issue;
 
-import static android.view.View.GONE;
-import static android.view.View.VISIBLE;
-import static com.github.pockethub.Intents.EXTRA_ISSUE;
-import static com.github.pockethub.Intents.EXTRA_REPOSITORY_NAME;
-import static com.github.pockethub.Intents.EXTRA_REPOSITORY_OWNER;
-import static com.github.pockethub.Intents.EXTRA_USER;
-import static com.github.pockethub.RequestCodes.ISSUE_ASSIGNEE_UPDATE;
-import static com.github.pockethub.RequestCodes.ISSUE_LABELS_UPDATE;
-import static com.github.pockethub.RequestCodes.ISSUE_MILESTONE_UPDATE;
-import android.accounts.Account;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.ActionBar;
-import android.text.Editable;
 import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -40,16 +29,17 @@ import android.widget.LinearLayout.LayoutParams;
 import android.widget.TextView;
 
 import com.alorma.github.sdk.bean.dto.request.IssueRequest;
+import com.alorma.github.sdk.bean.dto.response.Issue;
 import com.alorma.github.sdk.bean.dto.response.Label;
 import com.alorma.github.sdk.bean.dto.response.Milestone;
 import com.alorma.github.sdk.bean.dto.response.Repo;
+import com.alorma.github.sdk.bean.dto.response.User;
 import com.alorma.github.sdk.services.user.actions.CheckUserCollaboratorClient;
-import com.alorma.github.sdk.services.user.actions.OnCheckUserIsCollaborator;
 import com.github.pockethub.Intents.Builder;
 import com.github.pockethub.R;
 import com.github.pockethub.accounts.AccountUtils;
-import com.github.pockethub.accounts.AuthenticatedUserTask;
 import com.github.pockethub.core.issue.IssueUtils;
+import com.github.pockethub.rx.ObserverAdapter;
 import com.github.pockethub.ui.DialogFragmentActivity;
 import com.github.pockethub.ui.StyledText;
 import com.github.pockethub.ui.TextWatcherAdapter;
@@ -60,8 +50,19 @@ import com.google.inject.Inject;
 
 import java.util.List;
 
-import com.alorma.github.sdk.bean.dto.response.Issue;
-import com.alorma.github.sdk.bean.dto.response.User;
+import retrofit.RetrofitError;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
+
+import static android.view.View.GONE;
+import static android.view.View.VISIBLE;
+import static com.github.pockethub.Intents.EXTRA_ISSUE;
+import static com.github.pockethub.Intents.EXTRA_REPOSITORY_NAME;
+import static com.github.pockethub.Intents.EXTRA_REPOSITORY_OWNER;
+import static com.github.pockethub.Intents.EXTRA_USER;
+import static com.github.pockethub.RequestCodes.ISSUE_ASSIGNEE_UPDATE;
+import static com.github.pockethub.RequestCodes.ISSUE_LABELS_UPDATE;
+import static com.github.pockethub.RequestCodes.ISSUE_MILESTONE_UPDATE;
 
 /**
  * Activity to edit or create an issue
@@ -136,7 +137,7 @@ public class EditIssueActivity extends DialogFragmentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.issue_edit);
+        setContentView(R.layout.activity_issue_edit);
 
         titleText = finder.find(R.id.et_issue_title);
         bodyText = finder.find(R.id.et_issue_body);
@@ -330,7 +331,7 @@ public class EditIssueActivity extends DialogFragmentActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu options) {
-        getMenuInflater().inflate(R.menu.issue_edit, options);
+        getMenuInflater().inflate(R.menu.activity_issue_edit, options);
         saveItem = options.findItem(R.id.m_apply);
         updateSaveMenu();
         return super.onCreateOptionsMenu(options);
@@ -377,16 +378,27 @@ public class EditIssueActivity extends DialogFragmentActivity {
     }
 
     private void checkCollaboratorStatus() {
-        CheckUserCollaboratorClient collaboratorClient = new CheckUserCollaboratorClient(this,
-                InfoUtils.createRepoInfo(repository), AccountUtils.getLogin(this));
-        collaboratorClient.setOnCheckUserIsCollaborator(new OnCheckUserIsCollaborator() {
-            @Override
-            public void onCheckUserIsCollaborator(String user, boolean collaborator) {
-                showMainContent();
-                if (collaborator)
-                    showCollaboratorOptions();
-            }
-        });
-        collaboratorClient.execute();
+        new CheckUserCollaboratorClient(InfoUtils.createRepoInfo(repository), AccountUtils.getLogin(this))
+                .observable()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .compose(this.<Boolean>bindToLifecycle())
+                .subscribe(new ObserverAdapter<Boolean>() {
+                    @Override
+                    public void onNext(Boolean isCollaborator) {
+                        showMainContent();
+                        if (isCollaborator)
+                            showCollaboratorOptions();
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        if(e instanceof RetrofitError && ((RetrofitError) e).getResponse().getStatus() == 403){
+                            //403 -> Forbidden
+                            //The user is not a collaborator.
+                            showMainContent();
+                        }
+                    }
+                });
     }
 }

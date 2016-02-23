@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,10 +15,6 @@
  */
 package com.github.pockethub.ui.commit;
 
-import static com.github.pockethub.Intents.EXTRA_BASE;
-import static com.github.pockethub.Intents.EXTRA_HEAD;
-import static com.github.pockethub.Intents.EXTRA_REPOSITORY;
-import android.accounts.Account;
 import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
@@ -35,8 +31,6 @@ import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import com.alorma.github.basesdk.client.BaseClient;
-import com.alorma.github.sdk.Head;
 import com.alorma.github.sdk.bean.dto.response.Commit;
 import com.alorma.github.sdk.bean.dto.response.CommitFile;
 import com.alorma.github.sdk.bean.dto.response.CompareCommit;
@@ -44,8 +38,8 @@ import com.alorma.github.sdk.bean.dto.response.Repo;
 import com.alorma.github.sdk.services.repo.CompareCommitsClient;
 import com.github.kevinsawicki.wishlist.ViewUtils;
 import com.github.pockethub.R;
-import com.github.pockethub.core.commit.CommitCompareTask;
 import com.github.pockethub.core.commit.CommitUtils;
+import com.github.pockethub.rx.ObserverAdapter;
 import com.github.pockethub.ui.DialogFragment;
 import com.github.pockethub.ui.HeaderFooterListAdapter;
 import com.github.pockethub.util.AvatarLoader;
@@ -58,8 +52,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import retrofit.RetrofitError;
-import retrofit.client.Response;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
+
+import static com.github.pockethub.Intents.EXTRA_BASE;
+import static com.github.pockethub.Intents.EXTRA_HEAD;
+import static com.github.pockethub.Intents.EXTRA_REPOSITORY;
 
 /**
  * Fragment to display a list of commits being compared
@@ -107,7 +105,7 @@ public class CommitCompareListFragment extends DialogFragment implements
     @Override
     public void onCreateOptionsMenu(final Menu optionsMenu,
             final MenuInflater inflater) {
-        inflater.inflate(R.menu.refresh, optionsMenu);
+        inflater.inflate(R.menu.fragment_refresh, optionsMenu);
     }
 
     @Override
@@ -125,24 +123,26 @@ public class CommitCompareListFragment extends DialogFragment implements
     }
 
     private void compareCommits() {
-        CompareCommitsClient compareCommitsClient = new CompareCommitsClient(getActivity(),
-                InfoUtils.createRepoInfo(repository), base, head);
-        compareCommitsClient.setOnResultCallback(new BaseClient.OnResultCallback<CompareCommit>() {
-            @Override
-            public void onResponseOk(CompareCommit compareCommit, Response r) {
-                List<CommitFile> files = compareCommit.files;
-                diffStyler.setFiles(files);
-                if (files != null)
-                    Collections.sort(files, new CommitFileComparator());
-                updateList(compareCommit);
-            }
+        new CompareCommitsClient(InfoUtils.createRepoInfo(repository), base, head)
+                .observable()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .compose(this.<CompareCommit>bindToLifecycle())
+                .subscribe(new ObserverAdapter<CompareCommit>() {
+                    @Override
+                    public void onNext(CompareCommit compareCommit) {
+                        List<CommitFile> files = compareCommit.files;
+                        diffStyler.setFiles(files);
+                        if (files != null)
+                            Collections.sort(files, new CommitFileComparator());
+                        updateList(compareCommit);
+                    }
 
-            @Override
-            public void onFail(RetrofitError error) {
-                ToastUtils.show(getActivity(), error, R.string.error_commits_load);
-            }
-        });
-        compareCommitsClient.execute();
+                    @Override
+                    public void onError(Throwable error) {
+                        ToastUtils.show(getActivity(), error, R.string.error_commits_load);
+                    }
+                });
     }
 
     private void updateList(CompareCommit compare) {
@@ -216,7 +216,7 @@ public class CommitCompareListFragment extends DialogFragment implements
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.commit_diff_list, container);
+        return inflater.inflate(R.layout.fragment_commit_diff_list, container);
     }
 
     private void openCommit(final Commit commit) {

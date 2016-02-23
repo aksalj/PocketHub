@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2015 PocketHub
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.github.pockethub.ui;
 
 
@@ -32,15 +48,12 @@ import android.view.Window;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.alorma.github.basesdk.client.StoreCredentials;
 import com.alorma.github.sdk.bean.dto.response.Organization;
-import com.alorma.github.sdk.bean.dto.response.User;
-import com.alorma.github.sdk.bean.dto.response.UserType;
-import com.alorma.github.sdk.login.AccountsHelper;
-import com.bugsnag.android.Bugsnag;
 import com.github.pockethub.R;
 import com.github.pockethub.accounts.AccountUtils;
+import com.github.pockethub.accounts.AccountsHelper;
 import com.github.pockethub.accounts.LoginActivity;
+import com.github.pockethub.accounts.StoreCredentials;
 import com.github.pockethub.core.user.UserComparator;
 import com.github.pockethub.persistence.AccountDataManager;
 import com.github.pockethub.ui.gist.GistsPagerFragment;
@@ -63,6 +76,7 @@ public class MainActivity extends BaseActivity implements
 
     private static final String TAG = "MainActivity";
     private static final String PREF_USER_LEARNED_DRAWER = "navigation_drawer_learned";
+    public static final String PREF_FIRST_USE = "first_use";
 
     @Inject
     private AccountDataManager accountDataManager;
@@ -86,11 +100,14 @@ public class MainActivity extends BaseActivity implements
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Bugsnag.init(this);
         setContentView(R.layout.activity_main);
 
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
         userLearnedDrawer = sp.getBoolean(PREF_USER_LEARNED_DRAWER, false);
+
+        if(sp.getBoolean(PREF_FIRST_USE, true)) {
+            openWelcomeScreen();
+        }
 
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -130,9 +147,13 @@ public class MainActivity extends BaseActivity implements
                 AccountsHelper.getUserToken(this, account);
                 storeCredentials.storeToken(AccountsHelper.getUserToken(this, account));
                 storeCredentials.storeUsername(account.name);
-                storeCredentials.storeScopes(AccountsHelper.getUserScopes(this, account));
             }
         }
+    }
+
+    private void openWelcomeScreen() {
+        startActivity(new Intent(this, WelcomeActivity.class));
+        finish();
     }
 
     @Override
@@ -161,7 +182,7 @@ public class MainActivity extends BaseActivity implements
 
     @Override
     public boolean onCreateOptionsMenu(Menu optionMenu) {
-        getMenuInflater().inflate(R.menu.home, optionMenu);
+        getMenuInflater().inflate(R.menu.activity_main, optionMenu);
 
         SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
         MenuItem searchItem = optionMenu.findItem(R.id.m_search);
@@ -224,9 +245,10 @@ public class MainActivity extends BaseActivity implements
         ImageView userImage;
         TextView userRealName;
         TextView userName;
-        userImage = (ImageView) navigationView.findViewById(R.id.user_picture);
-        userRealName = (TextView) navigationView.findViewById(R.id.user_real_name);
-        userName = (TextView) navigationView.findViewById(R.id.user_name);
+        View headerView = navigationView.getHeaderView(0);
+        userImage = (ImageView) headerView.findViewById(R.id.user_picture);
+        userRealName = (TextView) headerView.findViewById(R.id.user_real_name);
+        userName = (TextView) headerView.findViewById(R.id.user_name);
 
         avatars.bind(userImage, org);
         userName.setText(org.login);
@@ -277,15 +299,19 @@ public class MainActivity extends BaseActivity implements
 
         if (itemId == R.id.navigation_home) {
             switchFragment(new HomePagerFragment(), org);
+            getSupportActionBar().setTitle(getString(R.string.app_name));
             return true;
         } else if (itemId == R.id.navigation_gists) {
             switchFragment(new GistsPagerFragment(), null);
+            getSupportActionBar().setTitle(menuItem.getTitle());
             return true;
         } else if (itemId == R.id.navigation_issue_dashboard) {
             switchFragment(new IssueDashboardPagerFragment(), null);
+            getSupportActionBar().setTitle(menuItem.getTitle());
             return true;
         } else if (itemId == R.id.navigation_bookmarks) {
             switchFragment(new FilterListFragment(), null);
+            getSupportActionBar().setTitle(menuItem.getTitle());
             return true;
         } else if (itemId == R.id.navigation_log_out) {
             AccountManager accountManager = getAccountManager();

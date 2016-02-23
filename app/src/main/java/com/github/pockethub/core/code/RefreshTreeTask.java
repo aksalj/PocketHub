@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -72,9 +72,8 @@ public class RefreshTreeTask extends AuthenticatedUserTask<FullTree> {
         if (branch == null) {
             branch = repository.default_branch;
             if (TextUtils.isEmpty(branch)) {
-                branch = new GetRepoClient(context, 
-                        InfoUtils.createRepoInfo(repository))
-                        .executeSync().default_branch;
+                branch = new GetRepoClient(InfoUtils.createRepoInfo(repository))
+                        .observable().toBlocking().first().default_branch;
                 if (TextUtils.isEmpty(branch))
                     throw new IOException(
                             "Repo does not have master branch");
@@ -83,19 +82,20 @@ public class RefreshTreeTask extends AuthenticatedUserTask<FullTree> {
         }
 
         if (!isValidRef(ref)) {
-            ref = new GetReferenceClient(context, InfoUtils.createRepoInfo(repository, branch)).executeSync();
+            ref = new GetReferenceClient(InfoUtils.createRepoInfo(repository, branch)).observable().toBlocking().first();
             if (!isValidRef(ref))
                 throw new IOException(
                         "Reference does not have associated commit SHA-1");
         }
 
-        GitCommit commit = new GetGitCommitClient(context,
-                InfoUtils.createRepoInfo(repository, ref.object.sha)).executeSync();
+        GitCommit commit = new GetGitCommitClient(InfoUtils.createRepoInfo(repository, ref.object.sha))
+                .observable().toBlocking().first();
         if (commit == null || commit.tree == null
                 || TextUtils.isEmpty(commit.tree.sha))
             throw new IOException("Commit does not have associated tree SHA-1");
 
-        GitTree tree = new GetGitTreeClient(context, InfoUtils.createRepoInfo(repository, commit.tree.sha),true).executeSync();
+        GitTree tree = new GetGitTreeClient(InfoUtils.createRepoInfo(repository, commit.tree.sha),true)
+                .observable().toBlocking().first();
         return new FullTree(tree, ref);
     }
 

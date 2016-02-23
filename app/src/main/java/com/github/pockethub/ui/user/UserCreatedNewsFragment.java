@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,13 +16,10 @@
 package com.github.pockethub.ui.user;
 
 import com.alorma.github.sdk.bean.dto.response.GithubEvent;
-import com.alorma.github.sdk.services.client.GithubClient;
+import com.alorma.github.sdk.services.client.GithubListClient;
 import com.alorma.github.sdk.services.user.events.GetUserCreatedEventsClient;
-import com.github.pockethub.core.ResourcePager;
-
 import com.github.pockethub.core.PageIterator;
-
-import org.eclipse.egit.github.core.Commit;
+import com.github.pockethub.core.ResourcePager;
 
 import java.util.List;
 
@@ -39,8 +36,8 @@ public class UserCreatedNewsFragment extends UserNewsFragment {
             public PageIterator<GithubEvent> createIterator(int page, int size) {
                 return new PageIterator<>(new PageIterator.GitHubRequest<List<GithubEvent>>() {
                     @Override
-                    public GithubClient<List<GithubEvent>> execute(int page) {
-                        return new GetUserCreatedEventsClient(getActivity(), org.login, page);
+                    public GithubListClient<List<GithubEvent>> execute(int page) {
+                        return new GetUserCreatedEventsClient(org.login, page);
                     }
                 }, page);
             }

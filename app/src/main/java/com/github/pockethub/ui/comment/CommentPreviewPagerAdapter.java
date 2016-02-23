@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,20 +19,16 @@ import android.content.Context;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 
+import com.alorma.github.sdk.bean.dto.response.Repo;
 import com.github.pockethub.R;
 import com.github.pockethub.ui.FragmentPagerAdapter;
-
-import com.alorma.github.sdk.bean.dto.response.Repo;
 
 /**
  * Pager of a raw and rendered comment text
  */
 public class CommentPreviewPagerAdapter extends FragmentPagerAdapter {
-
     private final Repo repo;
-
     private RawCommentFragment textFragment;
-
     private RenderedCommentFragment htmlFragment;
 
     /**
@@ -79,6 +75,10 @@ public class CommentPreviewPagerAdapter extends FragmentPagerAdapter {
      * @return text
      */
     public String getCommentText() {
+        if (textFragment == null) {
+            textFragment = (RawCommentFragment) getFragmentByPosition(0);
+        }
+
         return textFragment != null ? textFragment.getText() : null;
     }
 
@@ -88,8 +88,9 @@ public class CommentPreviewPagerAdapter extends FragmentPagerAdapter {
      * @return text
      */
     public void setCommentText(String comment) {
-        if(textFragment != null)
+        if (textFragment != null) {
             textFragment.setText(comment);
+        }
         initComment = comment;
     }
 
@@ -100,8 +101,9 @@ public class CommentPreviewPagerAdapter extends FragmentPagerAdapter {
      * @return this adapter
      */
     public CommentPreviewPagerAdapter setCurrentItem(int position) {
-        if (position == 1 && htmlFragment != null)
+        if (position == 1 && htmlFragment != null) {
             htmlFragment.setText(getCommentText(), repo);
+        }
         return this;
     }
 

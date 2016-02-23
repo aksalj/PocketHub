@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,12 +15,8 @@
  */
 package com.github.pockethub.ui.gist;
 
-import static com.github.pockethub.Intents.EXTRA_GIST_FILE;
-import static com.github.pockethub.Intents.EXTRA_GIST_ID;
-import static com.github.pockethub.util.PreferenceUtils.WRAP;
 import android.accounts.Account;
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
@@ -33,6 +29,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 
+import com.alorma.github.sdk.bean.dto.response.Gist;
 import com.alorma.github.sdk.bean.dto.response.GistFile;
 import com.github.pockethub.R;
 import com.github.pockethub.accounts.AuthenticatedUserTask;
@@ -46,7 +43,9 @@ import com.google.inject.Inject;
 import java.io.IOException;
 import java.util.Map;
 
-import com.alorma.github.sdk.bean.dto.response.Gist;
+import static com.github.pockethub.Intents.EXTRA_GIST_FILE;
+import static com.github.pockethub.Intents.EXTRA_GIST_ID;
+import static com.github.pockethub.util.PreferenceUtils.WRAP;
 
 /**
  * Fragment to display the content of a file in a Gist
@@ -106,7 +105,7 @@ public class GistFileFragment extends DialogFragment implements
 
     @Override
     public void onCreateOptionsMenu(Menu optionsMenu, MenuInflater inflater) {
-        inflater.inflate(R.menu.code_view, optionsMenu);
+        inflater.inflate(R.menu.fragment_code_view, optionsMenu);
 
         wrapItem = optionsMenu.findItem(R.id.m_wrap);
         updateWrapItem();
@@ -185,7 +184,7 @@ public class GistFileFragment extends DialogFragment implements
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.gist_file_view, container, false);
+        return inflater.inflate(R.layout.fragment_gist_file_view, container, false);
     }
 
     @Override

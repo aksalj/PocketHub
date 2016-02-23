@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,23 +15,13 @@
  */
 package com.github.pockethub.ui.commit;
 
-import static android.app.Activity.RESULT_OK;
-import static android.content.DialogInterface.BUTTON_NEGATIVE;
-import static android.graphics.Paint.UNDERLINE_TEXT_FLAG;
-import static com.github.pockethub.Intents.EXTRA_BASE;
-import static com.github.pockethub.Intents.EXTRA_COMMENT;
-import static com.github.pockethub.Intents.EXTRA_REPOSITORY;
-import static com.github.pockethub.RequestCodes.COMMENT_CREATE;
 import android.accounts.Account;
-import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -48,13 +38,14 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.afollestad.materialdialogs.DialogAction;
+import com.afollestad.materialdialogs.MaterialDialog;
 import com.alorma.github.sdk.bean.dto.response.Commit;
 import com.alorma.github.sdk.bean.dto.response.CommitComment;
 import com.alorma.github.sdk.bean.dto.response.CommitFile;
 import com.alorma.github.sdk.bean.dto.response.GitCommit;
 import com.alorma.github.sdk.bean.dto.response.Repo;
 import com.alorma.github.sdk.bean.dto.response.ShaUrl;
-import com.alorma.github.sdk.bean.info.IssueInfo;
 import com.github.kevinsawicki.wishlist.ViewFinder;
 import com.github.kevinsawicki.wishlist.ViewUtils;
 import com.github.pockethub.R;
@@ -65,7 +56,6 @@ import com.github.pockethub.core.commit.FullCommitFile;
 import com.github.pockethub.core.commit.RefreshCommitTask;
 import com.github.pockethub.ui.DialogFragment;
 import com.github.pockethub.ui.HeaderFooterListAdapter;
-import com.github.pockethub.ui.LightAlertDialog;
 import com.github.pockethub.ui.StyledText;
 import com.github.pockethub.util.AvatarLoader;
 import com.github.pockethub.util.HttpImageGetter;
@@ -77,6 +67,13 @@ import com.google.inject.Inject;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+
+import static android.app.Activity.RESULT_OK;
+import static android.graphics.Paint.UNDERLINE_TEXT_FLAG;
+import static com.github.pockethub.Intents.EXTRA_BASE;
+import static com.github.pockethub.Intents.EXTRA_COMMENT;
+import static com.github.pockethub.Intents.EXTRA_REPOSITORY;
+import static com.github.pockethub.RequestCodes.COMMENT_CREATE;
 
 /**
  * Fragment to display commit details with diff output
@@ -190,9 +187,8 @@ public class CommitDiffListFragment extends DialogFragment implements
     }
 
     @Override
-    public void onCreateOptionsMenu(final Menu optionsMenu,
-            final MenuInflater inflater) {
-        inflater.inflate(R.menu.commit_view, optionsMenu);
+    public void onCreateOptionsMenu(final Menu optionsMenu, final MenuInflater inflater) {
+        inflater.inflate(R.menu.fragment_commit_view, optionsMenu);
     }
 
     @Override
@@ -201,36 +197,29 @@ public class CommitDiffListFragment extends DialogFragment implements
             return false;
 
         switch (item.getItemId()) {
-        case R.id.m_refresh:
-            refreshCommit();
-            return true;
-        case R.id.m_copy_hash:
-            copyHashToClipboard();
-            return true;
-        case R.id.m_comment:
-            startActivityForResult(
-                    CreateCommentActivity.createIntent(repository, base),
-                    COMMENT_CREATE);
-            return true;
-        case R.id.m_share:
-            shareCommit();
-            return true;
-        default:
-            return super.onOptionsItemSelected(item);
+            case R.id.m_refresh:
+                refreshCommit();
+                return true;
+            case R.id.m_copy_hash:
+                copyHashToClipboard();
+                return true;
+            case R.id.m_comment:
+                startActivityForResult(
+                        CreateCommentActivity.createIntent(repository, base),
+                        COMMENT_CREATE);
+                return true;
+            case R.id.m_share:
+                shareCommit();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
         }
     }
 
-    @SuppressLint("NewApi")
     private void copyHashToClipboard() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            ClipboardManager manager = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData clip = ClipData.newPlainText("hash", commit.sha);
-            manager.setPrimaryClip(clip);
-        } else {
-            android.text.ClipboardManager manager = (android.text.ClipboardManager) getActivity().getSystemService
-                    (Context.CLIPBOARD_SERVICE);
-            manager.setText(commit.sha);
-        }
+        ClipboardManager manager = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("hash", commit.sha);
+        manager.setPrimaryClip(clip);
         Toast.makeText(getActivity(), R.string.toast_msg_copied, Toast.LENGTH_SHORT).show();
     }
 
@@ -273,7 +262,7 @@ public class CommitDiffListFragment extends DialogFragment implements
     }
 
     private boolean isDifferentCommitter(final String author,
-            final String committer) {
+                                         final String committer) {
         return committer != null && !committer.equals(author);
     }
 
@@ -325,7 +314,7 @@ public class CommitDiffListFragment extends DialogFragment implements
     }
 
     private void addCommitParents(Commit commit,
-            LayoutInflater inflater) {
+                                  LayoutInflater inflater) {
         List<ShaUrl> parents = commit.parents;
         if (parents == null || parents.isEmpty())
             return;
@@ -353,7 +342,7 @@ public class CommitDiffListFragment extends DialogFragment implements
     }
 
     private void updateList(Commit commit,
-            List<CommitComment> comments, List<FullCommitFile> files) {
+                            List<CommitComment> comments, List<FullCommitFile> files) {
         if (!isUsable())
             return;
 
@@ -369,7 +358,7 @@ public class CommitDiffListFragment extends DialogFragment implements
     }
 
     private void updateItems(List<CommitComment> comments,
-            List<FullCommitFile> files) {
+                             List<FullCommitFile> files) {
         CommitFileListAdapter rootAdapter = adapter.getWrappedAdapter();
         rootAdapter.clear();
         for (FullCommitFile file : files)
@@ -416,16 +405,17 @@ public class CommitDiffListFragment extends DialogFragment implements
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-            Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.commit_diff_list, container, false);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_commit_diff_list, container, false);
     }
 
     private void showFileOptions(CharSequence line, final int position,
-            final CommitFile file) {
-        final AlertDialog dialog = LightAlertDialog.create(getActivity());
-        dialog.setTitle(CommitUtils.getName(file));
-        dialog.setCanceledOnTouchOutside(true);
+                                 final CommitFile file) {
+
+        MaterialDialog.Builder builder = new MaterialDialog.Builder(getActivity())
+                .title(CommitUtils.getName(file));
+
+        final MaterialDialog[] dialogHolder = new MaterialDialog[1];
 
         View view = getActivity().getLayoutInflater().inflate(
                 R.layout.diff_line_dialog, null);
@@ -439,20 +429,16 @@ public class CommitDiffListFragment extends DialogFragment implements
                 + CommitUtils.abbreviate(commit));
 
         finder.find(R.id.ll_view_area).setOnClickListener(new OnClickListener() {
-
             public void onClick(View v) {
-                dialog.dismiss();
-
+                dialogHolder[0].dismiss();
                 openFile(file);
             }
         });
 
         finder.find(R.id.ll_comment_area).setOnClickListener(
                 new OnClickListener() {
-
                     public void onClick(View v) {
-                        dialog.dismiss();
-
+                        dialogHolder[0].dismiss();
                         startActivityForResult(CreateCommentActivity
                                         .createIntent(repository, commit.sha,
                                                 file.filename, position),
@@ -460,14 +446,18 @@ public class CommitDiffListFragment extends DialogFragment implements
                     }
                 });
 
-        dialog.setView(view);
-        dialog.setButton(BUTTON_NEGATIVE, getString(R.string.cancel),
-                new DialogInterface.OnClickListener() {
-
-                    public void onClick(DialogInterface dialog, int which) {
+        builder.customView(view, false)
+                .negativeText(R.string.cancel)
+                .onNegative(new MaterialDialog.SingleButtonCallback() {
+                    @Override
+                    public void onClick(@NonNull MaterialDialog dialog, @NonNull DialogAction which) {
                         dialog.dismiss();
                     }
                 });
+
+        MaterialDialog dialog = builder.build();
+        dialogHolder[0] = dialog;
+        dialog.setCanceledOnTouchOutside(true);
         dialog.show();
     }
 
@@ -486,7 +476,7 @@ public class CommitDiffListFragment extends DialogFragment implements
      * @param parent
      */
     private void selectPreviousFile(int position, Object item,
-            AdapterView<?> parent) {
+                                    AdapterView<?> parent) {
         CharSequence line;
         if (item instanceof CharSequence)
             line = (CharSequence) item;
@@ -511,7 +501,7 @@ public class CommitDiffListFragment extends DialogFragment implements
 
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position,
-            long id) {
+                            long id) {
         Object item = parent.getItemAtPosition(position);
         if (item instanceof Commit)
             startActivity(CommitViewActivity.createIntent(repository,

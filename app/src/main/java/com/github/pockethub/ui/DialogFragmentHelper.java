@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,8 +15,6 @@
  */
 package com.github.pockethub.ui;
 
-import static android.app.Activity.RESULT_CANCELED;
-import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.os.Bundle;
@@ -25,7 +23,11 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 
+import com.afollestad.materialdialogs.MaterialDialog;
+
 import roboguice.fragment.RoboDialogFragment;
+
+import static android.app.Activity.RESULT_CANCELED;
 
 /**
  * Base dialog fragment helper
@@ -129,13 +131,12 @@ public abstract class DialogFragmentHelper extends RoboDialogFragment implements
      *
      * @return dialog
      */
-    protected AlertDialog createDialog() {
-        final AlertDialog dialog = LightAlertDialog.create(getActivity());
-        dialog.setTitle(getTitle());
-        dialog.setMessage(getMessage());
-        dialog.setCancelable(true);
-        dialog.setOnCancelListener(this);
-        return dialog;
+    protected MaterialDialog.Builder createDialogBuilder() {
+        return new MaterialDialog.Builder(getActivity())
+                .title(getTitle())
+                .content(getMessage())
+                .cancelable(true)
+                .cancelListener(this);
     }
 
     @Override

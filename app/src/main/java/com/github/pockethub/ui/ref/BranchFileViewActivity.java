@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@ import android.webkit.WebView;
 import android.widget.ProgressBar;
 
 import com.alorma.github.sdk.bean.dto.response.GitBlob;
+import com.alorma.github.sdk.bean.dto.response.Repo;
 import com.github.kevinsawicki.wishlist.ViewUtils;
 import com.github.pockethub.Intents.Builder;
 import com.github.pockethub.R;
@@ -45,7 +46,6 @@ import com.github.pockethub.util.SourceEditor;
 import com.github.pockethub.util.ToastUtils;
 import com.google.inject.Inject;
 
-import com.alorma.github.sdk.bean.dto.response.Repo;
 import org.eclipse.egit.github.core.util.EncodingUtils;
 
 import static com.github.pockethub.Intents.EXTRA_BASE;
@@ -120,7 +120,7 @@ public class BranchFileViewActivity extends BaseActivity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.commit_file_view);
+        setContentView(R.layout.activity_commit_file_view);
 
         repo = getParcelableExtra(EXTRA_REPOSITORY);
         sha = getStringExtra(EXTRA_BASE);
@@ -151,7 +151,7 @@ public class BranchFileViewActivity extends BaseActivity implements
 
     @Override
     public boolean onCreateOptionsMenu(final Menu optionsMenu) {
-        getMenuInflater().inflate(R.menu.file_view, optionsMenu);
+        getMenuInflater().inflate(R.menu.activity_file_view, optionsMenu);
 
         MenuItem wrapItem = optionsMenu.findItem(R.id.m_wrap);
         if (PreferenceUtils.getCodePreferences(this).getBoolean(WRAP, false))

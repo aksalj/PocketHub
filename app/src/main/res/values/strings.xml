@@ -1,21 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-  Copyright 2012 GitHub Inc.
-
-  Licensed under the Apache License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
-
-  http://www.apache.org/licenses/LICENSE-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
--->
+  ~ Copyright (c) 2015 PocketHub
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
 <resources>
-    <!-- Bugsnag -->
-    <string name="bugsnag_api_key">071042af7240b1a939bfe921b07ccc6d</string>
 
     <!-- Error messages -->
     <string name="error_orgs_load">Loading account &amp; organizations failed</string>
@@ -101,6 +99,8 @@
     <string name="home">Home</string>
     <string name="log_out">Log Out</string>
     <string name="news">News</string>
+    <string name="skip">Skip</string>
+    <string name="done">Done</string>
     <string name="issues">Issues</string>
     <string name="gists">Gists</string>
     <string name="commits">Commits</string>
@@ -240,7 +240,7 @@
     <string name="cancel">Cancel</string>
     <string name="not_sure">NOT SURE</string>
     <string name="authenticator_conflict_title">App Conflict</string>
-    <string name="authenticator_conflict_message">Another installed app is already configured for GitHub authentication.\n\nYou must remove the other app from the Accounts &amp; sync settings and uninstall it before the GitHub app can be used.</string>
+    <string name="authenticator_conflict_message">Another installed app is already configured for PocketHub authentication.\n\nYou must remove the other app from the Accounts &amp; sync settings and uninstall it before the PocketHub app can be used.</string>
     <string name="opening_repository">Opening {0}…</string>
     <string name="commit_compare_title">Commit Compare</string>
     <string name="commit_prefix">Commit\u0020</string>
@@ -315,4 +315,16 @@
     <string name="error_oauth_not_configured">You won\'t be able to login, because the oauth client and secret aren\'t set
 Read the README.md: https://github.com/pockethub/PocketHub#setup-environment</string>
 
+
+    <string-array name="welcome_texts">
+        <item>So a while ago the GitHub app was discontinued and some of us wanted something new…</item>
+        <item>We move the app under a new name and are now PocketHub</item>
+        <item>Click done and we’ll get you logged in!</item>
+    </string-array>
+
+    <string-array name="welcome_titles">
+        <item>Welcome</item>
+        <item>Long story short</item>
+        <item>Let’s get started</item>
+    </string-array>
 </resources>

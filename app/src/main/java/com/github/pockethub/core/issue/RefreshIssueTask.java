@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,6 @@ import android.content.Context;
 import android.util.Log;
 
 import com.alorma.github.sdk.bean.dto.response.Issue;
-import com.alorma.github.sdk.bean.dto.response.IssueState;
 import com.alorma.github.sdk.bean.dto.response.Repo;
 import com.alorma.github.sdk.bean.issue.IssueStory;
 import com.alorma.github.sdk.bean.issue.PullRequestStory;
@@ -75,14 +74,14 @@ public class RefreshIssueTask extends AuthenticatedUserTask<IssueStory> {
         bodyImageGetter.encode(issue.id, issue.body_html);
 
         if(issue.pullRequest != null) {
-            PullRequestStory story = new PullRequestStoryLoader(context, InfoUtils.createIssueInfo(repo, issue)).executeSync();
+            PullRequestStory story = new PullRequestStoryLoader(InfoUtils.createIssueInfo(repo, issue)).observable().toBlocking().first();
             IssueStory issueStory = new IssueStory();
             issueStory.issue = story.pullRequest;
             issueStory.issue.pullRequest = story.pullRequest;
             issueStory.details = story.details;
             return issueStory;
         }else {
-            return new IssueStoryLoader(context, InfoUtils.createIssueInfo(repo, issue)).executeSync();
+            return new IssueStoryLoader(InfoUtils.createIssueInfo(repo, issue)).observable().toBlocking().first();
         }
     }
 

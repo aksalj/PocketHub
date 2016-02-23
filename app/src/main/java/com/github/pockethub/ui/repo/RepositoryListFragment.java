@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,12 +15,7 @@
  */
 package com.github.pockethub.ui.repo;
 
-import static com.github.pockethub.Intents.EXTRA_USER;
-import static com.github.pockethub.RequestCodes.REPOSITORY_VIEW;
-import static com.github.pockethub.ResultCodes.RESOURCE_CHANGED;
-import static java.util.Locale.US;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.content.Loader;
@@ -28,6 +23,9 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ListView;
 
+import com.afollestad.materialdialogs.MaterialDialog;
+import com.alorma.github.sdk.bean.dto.response.Repo;
+import com.alorma.github.sdk.bean.dto.response.User;
 import com.github.kevinsawicki.wishlist.SingleTypeAdapter;
 import com.github.kevinsawicki.wishlist.ViewFinder;
 import com.github.pockethub.R;
@@ -35,7 +33,6 @@ import com.github.pockethub.ThrowableLoader;
 import com.github.pockethub.persistence.AccountDataManager;
 import com.github.pockethub.ui.HeaderFooterListAdapter;
 import com.github.pockethub.ui.ItemListFragment;
-import com.github.pockethub.ui.LightAlertDialog;
 import com.github.pockethub.ui.user.OrganizationSelectionListener;
 import com.github.pockethub.ui.user.OrganizationSelectionProvider;
 import com.github.pockethub.ui.user.UserViewActivity;
@@ -47,8 +44,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.alorma.github.sdk.bean.dto.response.Repo;
-import com.alorma.github.sdk.bean.dto.response.User;
+import static com.github.pockethub.Intents.EXTRA_USER;
+import static com.github.pockethub.RequestCodes.REPOSITORY_VIEW;
+import static com.github.pockethub.ResultCodes.RESOURCE_CHANGED;
+import static java.util.Locale.US;
 
 /**
  * Fragment to display a list of {@link Repo} instances
@@ -166,10 +165,9 @@ public class RepositoryListFragment extends ItemListFragment<Repo>
         if (repo == null)
             return false;
 
-        final AlertDialog dialog = LightAlertDialog.create(getActivity());
-        dialog.setCanceledOnTouchOutside(true);
-
-        dialog.setTitle(InfoUtils.createRepoId(repo));
+        MaterialDialog.Builder builder = new MaterialDialog.Builder(getActivity())
+                .title(InfoUtils.createRepoId(repo));
+        final MaterialDialog[] dialogHolder = new MaterialDialog[1];
 
         View view = getActivity().getLayoutInflater().inflate(
             R.layout.repo_dialog, null);
@@ -179,10 +177,8 @@ public class RepositoryListFragment extends ItemListFragment<Repo>
         avatars.bind(finder.imageView(R.id.iv_owner_avatar), owner);
         finder.setText(R.id.tv_owner_name, getString(R.string.navigate_to_user, owner.login));
         finder.onClick(R.id.ll_owner_area, new OnClickListener() {
-
             public void onClick(View v) {
-                dialog.dismiss();
-
+                dialogHolder[0].dismiss();
                 viewUser(owner);
             }
         });
@@ -191,17 +187,18 @@ public class RepositoryListFragment extends ItemListFragment<Repo>
             finder.find(R.id.divider).setVisibility(View.VISIBLE);
             finder.find(R.id.ll_recent_repo_area).setVisibility(View.VISIBLE);
             finder.onClick(R.id.ll_recent_repo_area, new OnClickListener() {
-
                 public void onClick(View v) {
-                    dialog.dismiss();
-
+                    dialogHolder[0].dismiss();
                     recentRepos.remove(repo);
                     refresh();
                 }
             });
         }
 
-        dialog.setView(view);
+        builder.customView(view, false);
+        MaterialDialog dialog = builder.build();
+        dialogHolder[0] = dialog;
+        dialog.setCanceledOnTouchOutside(true);
         dialog.show();
 
         return true;

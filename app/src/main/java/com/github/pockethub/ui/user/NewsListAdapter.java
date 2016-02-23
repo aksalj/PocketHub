@@ -1,11 +1,11 @@
 /*
- * Copyright 2012 GitHub Inc.
+ * Copyright (c) 2015 PocketHub
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,7 +16,6 @@
 package com.github.pockethub.ui.user;
 
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
@@ -24,22 +23,8 @@ import android.widget.TextView;
 
 import com.alorma.github.sdk.bean.dto.response.GithubEvent;
 import com.alorma.github.sdk.bean.dto.response.events.EventType;
-import com.alorma.github.sdk.bean.dto.response.events.payload.CommitCommentEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.CreatedEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.DeleteEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.ForkEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.GithubEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.IssueCommentEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.IssueEventPayload;
 import com.alorma.github.sdk.bean.dto.response.events.payload.MemberEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.PublicEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.PullRequestEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.PullRequestReviewCommentEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.PushEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.ReleaseEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.TeamAddEventPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.UnhandledPayload;
-import com.alorma.github.sdk.bean.dto.response.events.payload.WatchedEventPayload;
+import com.alorma.github.sdk.bean.dto.response.events.payload.Payload;
 import com.github.kevinsawicki.wishlist.SingleTypeAdapter;
 import com.github.pockethub.R;
 import com.github.pockethub.api.FollowEventPayload;
@@ -47,8 +32,6 @@ import com.github.pockethub.api.GistEventPayload;
 import com.github.pockethub.util.AvatarLoader;
 import com.github.pockethub.util.TypefaceUtils;
 import com.google.gson.Gson;
-
-import java.util.Objects;
 
 import static org.eclipse.egit.github.core.event.Event.TYPE_COMMIT_COMMENT;
 import static org.eclipse.egit.github.core.event.Event.TYPE_CREATE;
@@ -98,7 +81,7 @@ public class NewsListAdapter extends SingleTypeAdapter<GithubEvent> {
 
         return TYPE_COMMIT_COMMENT.equals(type) //
                 || (TYPE_CREATE.equals(type) //
-                && (gson.fromJson(json, CreatedEventPayload.class)).ref_type != null) //
+                && (gson.fromJson(json, Payload.class)).ref_type != null) //
                 || TYPE_DELETE.equals(type) //
                 || TYPE_DOWNLOAD.equals(type) //
                 || TYPE_FOLLOW.equals(type) //
@@ -108,9 +91,9 @@ public class NewsListAdapter extends SingleTypeAdapter<GithubEvent> {
                 && (gson.fromJson(json, GistEventPayload.class)).gist != null)
                 || TYPE_GOLLUM.equals(type) //
                 || (TYPE_ISSUE_COMMENT.equals(type) //
-                && (gson.fromJson(json, IssueCommentEventPayload.class)).issue != null) //
+                && (gson.fromJson(json, Payload.class)).issue != null) //
                 || (TYPE_ISSUES.equals(type) //
-                && (gson.fromJson(json, IssueEventPayload.class)).issue != null) //
+                && (gson.fromJson(json, Payload.class)).issue != null) //
                 || TYPE_MEMBER.equals(type) //
                 || TYPE_PUBLIC.equals(type) //
                 || TYPE_PULL_REQUEST.equals(type) //
@@ -140,44 +123,44 @@ public class NewsListAdapter extends SingleTypeAdapter<GithubEvent> {
     private Class getClassFromType(EventType type) {
         switch (type){
             case WatchEvent:
-                return WatchedEventPayload.class;
+                return Payload.class;
             case CreateEvent:
-                return CreatedEventPayload.class;
+                return Payload.class;
             case CommitCommentEvent:
-                return CommitCommentEventPayload.class;
+                return Payload.class;
             case DownloadEvent:
-                return ReleaseEventPayload.class;
+                return Payload.class;
             case FollowEvent:
                 return FollowEventPayload.class;
             case ForkEvent:
-                return ForkEventPayload.class;
+                return Payload.class;
             case GistEvent:
                 return GistEventPayload.class;
             case IssueCommentEvent:
-                return IssueCommentEventPayload.class;
+                return Payload.class;
             case IssuesEvent:
-                return IssueEventPayload.class;
+                return Payload.class;
             case MemberEvent:
                 return MemberEventPayload.class;
             case PublicEvent:
-                return PublicEventPayload.class;
+                return Payload.class;
             case PullRequestEvent:
-                return PullRequestEventPayload.class;
+                return Payload.class;
             case PullRequestReviewCommentEvent:
-                return PullRequestReviewCommentEventPayload.class;
+                return Payload.class;
             case PushEvent:
-                return PushEventPayload.class;
+                return Payload.class;
             case TeamAddEvent:
-                return TeamAddEventPayload.class;
+                return Payload.class;
             case DeleteEvent:
-                return DeleteEventPayload.class;
+                return Payload.class;
             case ReleaseEvent:
-                return ReleaseEventPayload.class;
+                return Payload.class;
             case Unhandled:
-                return UnhandledPayload.class;
+                return Payload.class;
 
             default:
-                return GithubEventPayload.class;
+                return Payload.class;
         }
     }
 
@@ -189,7 +172,7 @@ public class NewsListAdapter extends SingleTypeAdapter<GithubEvent> {
             for (int i = 0; i < items.length; i++) {
                 GithubEvent element = (GithubEvent) items[i];
                 String json = gson.toJson(element.payload);
-                element.payload = gson.fromJson(json, getClassFromType(element.type));
+                element.payload = gson.fromJson(json, Payload.class);
                 elements[i] = element;
             }
             super.setItems(elements);
@@ -212,8 +195,7 @@ public class NewsListAdapter extends SingleTypeAdapter<GithubEvent> {
     @Override
     public long getItemId(final int position) {
         final String id = String.valueOf(getItem(position).id);
-        return !TextUtils.isEmpty(id) ? id.hashCode() : super
-                .getItemId(position);
+        return !TextUtils.isEmpty(id) ? id.hashCode() : super.getItemId(position);
     }
 
     @Override
